@@ -1,0 +1,324 @@
+{
+  "entities": {
+    "UserWallet": {
+      "title": "UserWallet",
+      "description": "Configuración mensual de la billetera aislada por usuario autenticado.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "UID del usuario propietario de la billetera."
+        },
+        "budgetMode": {
+          "type": "string",
+          "enum": ["fixed", "variable"],
+          "description": "Modo de presupuesto: fijo mensual o ingresos variables (freelancer)."
+        },
+        "monthlyBudget": {
+          "type": "integer",
+          "description": "Presupuesto base mensual en COP (0 cuando inicia en modo freelancer)."
+        },
+        "monthKey": {
+          "type": "string",
+          "maxLength": 7,
+          "pattern": "^\\d{4}-\\d{2}$",
+          "description": "Mes activo en formato YYYY-MM."
+        },
+        "cardsInitialized": {
+          "type": "boolean",
+          "description": "Indica si las tarjetas iniciales ya fueron creadas."
+        },
+        "createdAt": {
+          "type": "integer",
+          "description": "Marca de tiempo de creación en milisegundos."
+        },
+        "updatedAt": {
+          "type": "integer",
+          "description": "Marca de tiempo de última actualización en milisegundos."
+        }
+      },
+      "required": [
+        "ownerId",
+        "monthlyBudget",
+        "monthKey",
+        "cardsInitialized",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Income": {
+      "title": "Income",
+      "description": "Ingreso o abono de dinero registrado paulatinamente en la billetera.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "UID del usuario propietario del ingreso."
+        },
+        "amount": {
+          "type": "integer",
+          "description": "Monto recibido en COP enteros."
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "description": "Descripción o concepto del ingreso."
+        },
+        "date": {
+          "type": "string",
+          "maxLength": 10,
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+          "description": "Fecha del ingreso en formato YYYY-MM-DD."
+        },
+        "createdAt": {
+          "type": "integer",
+          "description": "Marca de tiempo de creación en milisegundos."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "reverted"],
+          "description": "Estado del ingreso: activo o revertido por error."
+        },
+        "revertedAt": {
+          "type": "integer",
+          "description": "Marca de tiempo en milisegundos cuando el ingreso fue revertido."
+        }
+      },
+      "required": ["ownerId", "amount", "description", "date", "createdAt"]
+    },
+    "SavingsGoal": {
+      "title": "SavingsGoal",
+      "description": "Alcancía o meta de ahorro del usuario.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "UID del usuario propietario de la meta de ahorro."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40,
+          "description": "Nombre de la alcancía o meta de ahorro."
+        },
+        "targetAmount": {
+          "type": "integer",
+          "description": "Meta opcional en COP enteros."
+        },
+        "createdAt": {
+          "type": "integer",
+          "description": "Marca de tiempo de creación en milisegundos."
+        }
+      },
+      "required": ["ownerId", "name", "createdAt"]
+    },
+    "SavingsEntry": {
+      "title": "SavingsEntry",
+      "description": "Movimiento de depósito o retiro dentro de una alcancía de ahorro.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "UID del usuario propietario del movimiento de ahorro."
+        },
+        "goalId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "Identificador de la alcancía asociada."
+        },
+        "goalName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40,
+          "description": "Nombre legible de la alcancía."
+        },
+        "type": {
+          "type": "string",
+          "enum": ["deposit", "withdraw"],
+          "description": "Tipo de movimiento: aporte (deposit) o retiro (withdraw)."
+        },
+        "amount": {
+          "type": "integer",
+          "description": "Monto del movimiento en COP enteros."
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "description": "Nota o descripción del movimiento."
+        },
+        "date": {
+          "type": "string",
+          "maxLength": 10,
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+          "description": "Fecha del movimiento en formato YYYY-MM-DD."
+        },
+        "createdAt": {
+          "type": "integer",
+          "description": "Marca de tiempo de creación en milisegundos."
+        }
+      },
+      "required": [
+        "ownerId",
+        "goalId",
+        "goalName",
+        "type",
+        "amount",
+        "description",
+        "date",
+        "createdAt"
+      ]
+    },
+    "Expense": {
+      "title": "Expense",
+      "description": "Gasto registrado dentro de la billetera de un usuario.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "UID del usuario propietario del gasto."
+        },
+        "amount": {
+          "type": "integer",
+          "description": "Monto base del gasto en COP enteros."
+        },
+        "category": {
+          "type": "string",
+          "maxLength": 40,
+          "enum": [
+            "Alimentación",
+            "Transporte",
+            "Cafetería",
+            "Hogar",
+            "Salud y farmacia",
+            "Restaurantes",
+            "Servicios",
+            "Entretenimiento",
+            "Otros"
+          ],
+          "description": "Categoría del gasto."
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "description": "Descripción corta del gasto."
+        },
+        "date": {
+          "type": "string",
+          "maxLength": 10,
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+          "description": "Fecha del gasto en formato YYYY-MM-DD."
+        },
+        "createdAt": {
+          "type": "integer",
+          "description": "Marca de tiempo de creación en milisegundos."
+        },
+        "paymentType": {
+          "type": "string",
+          "enum": ["single", "installments"],
+          "description": "Forma de pago: de una sola vez o a plazos."
+        },
+        "interestAmount": {
+          "type": "integer",
+          "description": "Intereses totales calculados en COP enteros."
+        },
+        "interestRatePercent": {
+          "type": "number",
+          "description": "Porcentaje de interés mensual."
+        },
+        "installmentMonths": {
+          "type": "integer",
+          "description": "Número de cuotas o meses del pago a plazos."
+        },
+        "cardId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Identificador de la tarjeta usada en pago a plazos."
+        },
+        "cardLabel": {
+          "type": "string",
+          "maxLength": 64,
+          "description": "Etiqueta legible de la tarjeta utilizada."
+        }
+      },
+      "required": [
+        "ownerId",
+        "amount",
+        "category",
+        "description",
+        "date",
+        "createdAt",
+        "paymentType"
+      ]
+    },
+    "PaymentCard": {
+      "title": "PaymentCard",
+      "description": "Tarjeta registrada por un usuario para pagos a plazos.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "UID del usuario propietario de la tarjeta."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32,
+          "description": "Nombre o banco de la tarjeta."
+        },
+        "last4": {
+          "type": "string",
+          "maxLength": 4,
+          "pattern": "^\\d{4}$",
+          "description": "Últimos cuatro dígitos opcionales de la tarjeta."
+        },
+        "createdAt": {
+          "type": "integer",
+          "description": "Marca de tiempo de creación en milisegundos."
+        }
+      },
+      "required": ["ownerId", "name", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserWallet" },
+      "description": "Documento principal de presupuesto y estado de billetera por usuario."
+    },
+    "/users/{userId}/incomes/{incomeId}": {
+      "schema": { "$ref": "#/entities/Income" },
+      "description": "Subcolección de ingresos o abonos graduales de dinero del usuario."
+    },
+    "/users/{userId}/savingsGoals/{goalId}": {
+      "schema": { "$ref": "#/entities/SavingsGoal" },
+      "description": "Subcolección de alcancías y metas de ahorro del usuario."
+    },
+    "/users/{userId}/savingsEntries/{entryId}": {
+      "schema": { "$ref": "#/entities/SavingsEntry" },
+      "description": "Subcolección de aportes y retiros de ahorro del usuario."
+    },
+    "/users/{userId}/expenses/{expenseId}": {
+      "schema": { "$ref": "#/entities/Expense" },
+      "description": "Subcolección de gastos registrados del usuario."
+    },
+    "/users/{userId}/cards/{cardId}": {
+      "schema": { "$ref": "#/entities/PaymentCard" },
+      "description": "Subcolección de tarjetas guardadas del usuario."
+    }
+  }
+}

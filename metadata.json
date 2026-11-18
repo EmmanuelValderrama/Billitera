@@ -1,0 +1,6 @@
+{
+  "name": "Tu billetera",
+  "description": "Dashboard elegante de presupuesto mensual, gastos diarios y saldo disponible.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

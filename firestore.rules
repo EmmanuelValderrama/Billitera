@@ -1,0 +1,381 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidCategory(cat) {
+      return cat in [
+        'Alimentación',
+        'Transporte',
+        'Cafetería',
+        'Hogar',
+        'Salud y farmacia',
+        'Restaurantes',
+        'Servicios',
+        'Entretenimiento',
+        'Otros'
+      ];
+    }
+
+    function isValidUserWallet(data, userId) {
+      return data.keys().hasAll([
+          'ownerId',
+          'monthlyBudget',
+          'monthKey',
+          'cardsInitialized',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId',
+          'budgetMode',
+          'monthlyBudget',
+          'monthKey',
+          'cardsInitialized',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.ownerId is string
+        && data.ownerId.size() >= 1
+        && data.ownerId.size() <= 128
+        && data.ownerId == userId
+        && data.monthlyBudget is int
+        && data.monthlyBudget <= 10000000000
+        && (
+          (!('budgetMode' in data) && data.monthlyBudget > 0)
+          || ('budgetMode' in data && data.budgetMode == 'fixed' && data.monthlyBudget > 0)
+          || ('budgetMode' in data && data.budgetMode == 'variable' && data.monthlyBudget >= 0)
+        )
+        && data.monthKey is string
+        && data.monthKey.size() == 7
+        && data.monthKey.matches('^\\d{4}-\\d{2}$')
+        && data.cardsInitialized is bool
+        && data.createdAt is int
+        && data.createdAt > 0
+        && data.updatedAt is int
+        && data.updatedAt > 0;
+    }
+
+    function isValidIncome(data, userId) {
+      return data.keys().hasAll(['ownerId', 'amount', 'description', 'date', 'createdAt'])
+        && data.keys().hasOnly([
+          'ownerId',
+          'amount',
+          'description',
+          'date',
+          'createdAt',
+          'status',
+          'revertedAt'
+        ])
+        && data.ownerId is string
+        && data.ownerId.size() >= 1
+        && data.ownerId.size() <= 128
+        && data.ownerId == userId
+        && data.amount is int
+        && data.amount > 0
+        && data.amount <= 10000000000
+        && data.description is string
+        && data.description.size() >= 1
+        && data.description.size() <= 80
+        && data.date is string
+        && data.date.size() == 10
+        && data.date.matches('^\\d{4}-\\d{2}-\\d{2}$')
+        && data.createdAt is int
+        && data.createdAt > 0
+        && (!('status' in data) || data.status in ['active', 'reverted'])
+        && (!('revertedAt' in data) || (data.revertedAt is int && data.revertedAt > 0));
+    }
+
+    function isValidSavingsGoal(data, userId) {
+      return data.keys().hasAll(['ownerId', 'name', 'createdAt'])
+        && data.keys().hasOnly(['ownerId', 'name', 'targetAmount', 'createdAt'])
+        && data.ownerId is string
+        && data.ownerId.size() >= 1
+        && data.ownerId.size() <= 128
+        && data.ownerId == userId
+        && data.name is string
+        && data.name.size() >= 1
+        && data.name.size() <= 40
+        && data.createdAt is int
+        && data.createdAt > 0
+        && (!('targetAmount' in data) || (data.targetAmount is int && data.targetAmount > 0 && data.targetAmount <= 10000000000));
+    }
+
+    function isValidSavingsEntry(data, userId) {
+      return data.keys().hasAll([
+          'ownerId',
+          'goalId',
+          'goalName',
+          'type',
+          'amount',
+          'description',
+          'date',
+          'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId',
+          'goalId',
+          'goalName',
+          'type',
+          'amount',
+          'description',
+          'date',
+          'createdAt'
+        ])
+        && data.ownerId is string
+        && data.ownerId.size() >= 1
+        && data.ownerId.size() <= 128
+        && data.ownerId == userId
+        && isValidId(data.goalId)
+        && existsAfter(/databases/$(database)/documents/users/$(userId)/savingsGoals/$(data.goalId))
+        && data.goalName is string
+        && data.goalName.size() >= 1
+        && data.goalName.size() <= 40
+        && data.type in ['deposit', 'withdraw']
+        && data.amount is int
+        && data.amount > 0
+        && data.amount <= 10000000000
+        && data.description is string
+        && data.description.size() >= 1
+        && data.description.size() <= 80
+        && data.date is string
+        && data.date.size() == 10
+        && data.date.matches('^\\d{4}-\\d{2}-\\d{2}$')
+        && data.createdAt is int
+        && data.createdAt > 0;
+    }
+
+    function isValidCard(data, userId) {
+      return data.keys().hasAll(['ownerId', 'name', 'createdAt'])
+        && data.keys().hasOnly(['ownerId', 'name', 'last4', 'createdAt'])
+        && data.ownerId is string
+        && data.ownerId.size() >= 1
+        && data.ownerId.size() <= 128
+        && data.ownerId == userId
+        && data.name is string
+        && data.name.size() >= 1
+        && data.name.size() <= 32
+        && data.createdAt is int
+        && data.createdAt > 0
+        && (!('last4' in data) || (data.last4 is string && data.last4.size() == 4 && data.last4.matches('^\\d{4}$')));
+    }
+
+    function isValidInstallmentFields(data, userId) {
+      return data.paymentType == 'single'
+        ? (
+            !('interestAmount' in data)
+            && !('interestRatePercent' in data)
+            && !('installmentMonths' in data)
+            && !('cardId' in data)
+            && !('cardLabel' in data)
+          )
+        : (
+            data.paymentType == 'installments'
+            && data.keys().hasAll([
+              'ownerId',
+              'amount',
+              'category',
+              'description',
+              'date',
+              'createdAt',
+              'paymentType',
+              'interestAmount',
+              'interestRatePercent',
+              'installmentMonths',
+              'cardId',
+              'cardLabel'
+            ])
+            && data.interestAmount is int
+            && data.interestAmount >= 0
+            && data.interestAmount <= 10000000000
+            && (data.interestRatePercent is int || data.interestRatePercent is float)
+            && data.interestRatePercent >= 0
+            && data.interestRatePercent <= 100
+            && data.installmentMonths is int
+            && data.installmentMonths >= 1
+            && data.installmentMonths <= 999
+            && isValidId(data.cardId)
+            && exists(/databases/$(database)/documents/users/$(userId)/cards/$(data.cardId))
+            && data.cardLabel is string
+            && data.cardLabel.size() >= 1
+            && data.cardLabel.size() <= 64
+          );
+    }
+
+    function isValidExpense(data, userId) {
+      return data.keys().hasAll([
+          'ownerId',
+          'amount',
+          'category',
+          'description',
+          'date',
+          'createdAt',
+          'paymentType'
+        ])
+        && data.keys().hasOnly([
+          'ownerId',
+          'amount',
+          'category',
+          'description',
+          'date',
+          'createdAt',
+          'paymentType',
+          'interestAmount',
+          'interestRatePercent',
+          'installmentMonths',
+          'cardId',
+          'cardLabel'
+        ])
+        && data.ownerId is string
+        && data.ownerId.size() >= 1
+        && data.ownerId.size() <= 128
+        && data.ownerId == userId
+        && data.amount is int
+        && data.amount > 0
+        && data.amount <= 10000000000
+        && data.category is string
+        && data.category.size() >= 1
+        && data.category.size() <= 40
+        && isValidCategory(data.category)
+        && data.description is string
+        && data.description.size() >= 1
+        && data.description.size() <= 80
+        && data.date is string
+        && data.date.size() == 10
+        && data.date.matches('^\\d{4}-\\d{2}-\\d{2}$')
+        && data.createdAt is int
+        && data.createdAt > 0
+        && data.paymentType in ['single', 'installments']
+        && isValidInstallmentFields(data, userId);
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow create: if isOwner(userId)
+        && isValidId(userId)
+        && isValidUserWallet(incoming(), userId);
+      allow update: if isOwner(userId)
+        && isValidId(userId)
+        && isValidUserWallet(incoming(), userId)
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'budgetMode',
+          'monthlyBudget',
+          'cardsInitialized',
+          'updatedAt'
+        ]);
+      allow delete: if isOwner(userId) && isValidId(userId);
+
+      match /incomes/{incomeId} {
+        allow list: if isOwner(userId) && resource.data.ownerId == request.auth.uid;
+        allow get: if isOwner(userId) && isValidId(incomeId);
+        allow create: if isOwner(userId)
+          && isValidId(incomeId)
+          && isValidIncome(incoming(), userId)
+          && exists(/databases/$(database)/documents/users/$(userId));
+        allow update: if isOwner(userId)
+          && isValidId(incomeId)
+          && isValidIncome(incoming(), userId)
+          && incoming().ownerId == existing().ownerId
+          && incoming().createdAt == existing().createdAt
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'amount',
+            'description',
+            'date',
+            'status',
+            'revertedAt'
+          ]);
+        allow delete: if isOwner(userId) && isValidId(incomeId);
+      }
+
+      match /savingsGoals/{goalId} {
+        allow list: if isOwner(userId) && resource.data.ownerId == request.auth.uid;
+        allow get: if isOwner(userId) && isValidId(goalId);
+        allow create: if isOwner(userId)
+          && isValidId(goalId)
+          && isValidSavingsGoal(incoming(), userId)
+          && exists(/databases/$(database)/documents/users/$(userId));
+        allow update: if isOwner(userId)
+          && isValidId(goalId)
+          && isValidSavingsGoal(incoming(), userId)
+          && incoming().ownerId == existing().ownerId
+          && incoming().createdAt == existing().createdAt
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'name',
+            'targetAmount'
+          ]);
+        allow delete: if isOwner(userId) && isValidId(goalId);
+      }
+
+      match /savingsEntries/{entryId} {
+        allow list: if isOwner(userId) && resource.data.ownerId == request.auth.uid;
+        allow get: if isOwner(userId) && isValidId(entryId);
+        allow create: if isOwner(userId)
+          && isValidId(entryId)
+          && isValidSavingsEntry(incoming(), userId)
+          && exists(/databases/$(database)/documents/users/$(userId));
+        allow delete: if isOwner(userId) && isValidId(entryId);
+      }
+
+      match /cards/{cardId} {
+        allow list: if isOwner(userId) && resource.data.ownerId == request.auth.uid;
+        allow get: if isOwner(userId) && isValidId(cardId);
+        allow create: if isOwner(userId)
+          && isValidId(cardId)
+          && isValidCard(incoming(), userId)
+          && existsAfter(/databases/$(database)/documents/users/$(userId));
+        allow delete: if isOwner(userId) && isValidId(cardId);
+      }
+
+      match /expenses/{expenseId} {
+        allow list: if isOwner(userId) && resource.data.ownerId == request.auth.uid;
+        allow get: if isOwner(userId) && isValidId(expenseId);
+        allow create: if isOwner(userId)
+          && isValidId(expenseId)
+          && isValidExpense(incoming(), userId)
+          && exists(/databases/$(database)/documents/users/$(userId));
+        allow update: if isOwner(userId)
+          && isValidId(expenseId)
+          && isValidExpense(incoming(), userId)
+          && incoming().ownerId == existing().ownerId
+          && incoming().createdAt == existing().createdAt
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'amount',
+            'category',
+            'description',
+            'date',
+            'paymentType',
+            'interestAmount',
+            'interestRatePercent',
+            'installmentMonths',
+            'cardId',
+            'cardLabel'
+          ]);
+        allow delete: if isOwner(userId) && isValidId(expenseId);
+      }
+    }
+  }
+}
